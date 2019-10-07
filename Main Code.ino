@@ -1,7 +1,6 @@
 #include <DueTimer.h>
 #include <Encoder.h>
 #include <CytronMotorDriver.h>
-#include <PID_v1.h>
 
 double sensorDist;
 
@@ -13,6 +12,8 @@ Encoder WLeft(24,25);
 
 double Ldist = 0;
 double Rdist = 0;
+
+long LeftTurn = 2500;
 
 double LSetSpeed ; double LOutput;
 double RSetSpeed ; double ROutput;
@@ -26,11 +27,10 @@ double RightDerivative = 0;
 double RightErrorSum = 0;
 
 double LSpeed = 0; double RSpeed = 0;
-double Kp=15 ;double Ki=2 ;double Kd=1;
-double Kp2=20;double Ki2=1.5;double Kd2=1;
+double Kp=15 ;double Ki=3 ;double Kd=1;
+double Kp2=15;double Ki2=3;double Kd2=1;
 
-    double Task1 = 0;
-    
+   
   double Lerror = 0; 
   double Lcontrol = 0;
   double LFeedForward = 0;
@@ -39,7 +39,8 @@ double Kp2=20;double Ki2=1.5;double Kd2=1;
   double Rcontrol = 0;
   double RFeedForward = 0;
 
-    
+
+//*****************************************************************************//
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600); 
@@ -47,32 +48,55 @@ void setup() {
   pinMode(A0, INPUT);
 
   Timer1.attachInterrupt(TimerInterrupt);
-  Timer1.start(50000); //every 0.05 seconds
-
-//  Timer2.attachInterrupt(TimerInterrupt2);
-//  Timer2.start(100000);
-
-RSetSpeed = 15;
-LSetSpeed = 15;
-  while (Task1<100){
-
-Task1 = ticksToCM(WLeft.read());
-speedCorrection();
-delay(100);
-    Serial1.print("Distance: ");
-    Serial1.println(sensorDist);
-     Serial1.print("Task1: ");
-    Serial1.println(Task1);
-
-  }
- RSetSpeed = 0;
- LSetSpeed = 0;
- 
+  Timer1.start(100000); //every 0.1 seconds
   
+//  Timer2.attachInterrupt(speedCorrection);
+//  Timer2.start(500000); //every 0.5 seconds
+  //Task Code
+    long currentDist = 0;
+    int Task1 = 0;
+    startSpeed(15);
+while(Task1<=100){
+  LSetSpeed = 15;
+  RSetSpeed = 15;
+  speedCorrection();
+  Task1 = ticksToCM(WLeft.read());
+  Serial1.print("Task1");
+  Serial1.println(Task1);
+    Serial1.print("WLeft");
+  Serial1.println(WLeft.read());
+  delay(500);
+}
+setStop();
+delay(500);
+rightTurn();
+delay(500);
+
+int Task2 = 0;
+    startSpeed(15);
+ currentDist = ticksToCM(WLeft.read());
+while(Task2-currentDist<=100){
+  LSetSpeed = 15;
+  RSetSpeed = 15;
+  speedCorrection();
+  Task2 = ticksToCM(WLeft.read());
+ 
+  delay(500);
+}
+setStop();
+
+
+
+
+
+  //Task Code
+ 
 }
 
+//*****************************************************************************//
 void loop() 
 {
+
 
 }
 
@@ -81,20 +105,14 @@ void TimerInterrupt()
   measureSpeeds();
   controlSpeeds();
   
-//  Serial1.print("speedL: ");
-//  Serial1.println(LSpeed);
-//  Serial1.print("speedR: ");
-//  Serial1.println(RSpeed);
+  Serial.print("speedL: ");
+  Serial.println(LSpeed);
+  Serial.print("speedR: ");
+  Serial.println(RSpeed);
 
 }
-//void TimerInterrupt2(){
-//    sensorRead();
-//    speedCorrection();
-//    Serial1.print("Distance: ");
-//    Serial1.println(sensorDist);
-//     Serial1.print("Task1: ");
-//    Serial1.println(Task1);
-//}
+
+//*****************************************************************************//
 
 float ticksToCM(long encoder_val)
 {
@@ -105,8 +123,8 @@ void measureSpeeds()
 {
   double Ldist_now = ticksToCM(WLeft.read());
   double Rdist_now = ticksToCM(-WRight.read());
-  LSpeed = (Ldist_now-Ldist)/0.05;  //cm/s
-  RSpeed = (Rdist_now-Rdist)/0.05;
+  LSpeed = (Ldist_now-Ldist)/0.1;  //cm/s
+  RSpeed = (Rdist_now-Rdist)/0.1;
   Ldist = Ldist_now;
   Rdist = Rdist_now;
 }   
@@ -164,19 +182,53 @@ void sensorRead(){
    if(analogRead(A0)>200){
   sensorDist = -0.088*(analogRead(A0))+64.393;
  }
- else sensorDist = 2;
+ else sensorDist = 6;
 }
 
 void speedCorrection(){
   sensorRead();
   if(sensorDist<5){
-    LSetSpeed = LSetSpeed - 0.5;
+    LSetSpeed = LSetSpeed - 1.25;
         Serial1.println("Left - - ");
  
   }
-  else if(sensorDist>7){
-    RSetSpeed = RSetSpeed - 0.5;
+  else if(sensorDist>5&&sensorDist<10){
+    RSetSpeed = RSetSpeed - 1.25;
        Serial1.println("Right - - ");
   }
+  Serial1.println(sensorDist);
    
+}
+
+//*****************************************************************************//
+void leftTurn(){
+  long currentLRead = WLeft.read();
+    setStop();
+  while(WLeft.read()-currentLRead > -LeftTurn){
+    RSetSpeed = 2;
+    LSetSpeed = -2;
+  }
+  setStop();
+}
+void rightTurn(){
+  long currentRRead = -WRight.read();
+    setStop();
+  while(-WRight.read()-currentRRead > - LeftTurn){
+    RSetSpeed = -2;
+    LSetSpeed = 2;
+  }
+  setStop();
+}
+void setStop(){
+  for(int c=0; c<20;c++){
+  RSetSpeed = 0;
+  LSetSpeed = 0;
+  }
+}
+void startSpeed(int speedset){
+  for(int d=0;d<=speedset;d++){
+      RSetSpeed = d;
+      LSetSpeed = d;
+      delay(50);
+  }
 }
