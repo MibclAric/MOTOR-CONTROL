@@ -7,35 +7,33 @@ double sensorDist;
 CytronMD motor1(PWM_DIR, 5, 4);  // PWM 1 = Pin 5, DIR 1 = Pin 4.
 CytronMD motor2(PWM_DIR, 6, 7); // PWM 2 = Pin 6, DIR 2 = Pin 7.
 
-Encoder WRight(22,23);
-Encoder WLeft(24,25);
+Encoder WRight(22,23);   //encoder pins
+Encoder WLeft(24,25);   //encoder pins
 
-double Ldist = 0;
-double Rdist = 0;
+double Ldist = 0;  //left wheel distance traveled
+double Rdist = 0; //right wheel distance traveled
 
-long LeftTurn = 2500;
-
-double LSetSpeed ; double LOutput;
+double LSetSpeed ; double LOutput; //Input Speed to PID and Outpus Speed from PID
 double RSetSpeed ; double ROutput;
 
-double OldLeftSpeed = 0;
+double OldLeftSpeed = 0; //PID variables
 double LeftDerivative  = 0;
 double LeftErrorSum = 0;
 
-double OldRightSpeed = 0;
+double OldRightSpeed = 0; //PID variables
 double RightDerivative = 0;
 double RightErrorSum = 0;
 
-double LSpeed = 0; double RSpeed = 0;
+double LSpeed = 0; double RSpeed = 0; //PID variables
 double Kp=15 ;double Ki=3 ;double Kd=1;
 double Kp2=15;double Ki2=3;double Kd2=1;
 
    
-  double Lerror = 0; 
+  double Lerror = 0;  //PID variables
   double Lcontrol = 0;
   double LFeedForward = 0;
 
-  double Rerror = 0;
+  double Rerror = 0; //PID variables
   double Rcontrol = 0;
   double RFeedForward = 0;
 
@@ -45,9 +43,9 @@ void setup() {
   Serial.begin(9600);
   Serial1.begin(9600); 
 
-  pinMode(A0, INPUT);
+  pinMode(A0, INPUT); //IR Sensor Pin A0
 
-  Timer1.attachInterrupt(TimerInterrupt);
+  Timer1.attachInterrupt(TimerInterrupt); //Timer Interrupt for PID
   Timer1.start(100000); //every 0.1 seconds
   
 //  Timer2.attachInterrupt(speedCorrection);
@@ -238,12 +236,12 @@ void TimerInterrupt()
 
 //*****************************************************************************//
 
-float ticksToCM(long encoder_val)
+float ticksToCM(long encoder_val) //return from encoder value to CM
 {
   return encoder_val/297.2545932;
 }
 
-void measureSpeeds()
+void measureSpeeds() //measure speed by encoder
 {
   double Ldist_now = ticksToCM(WLeft.read());
   double Rdist_now = ticksToCM(-WRight.read());
@@ -253,7 +251,7 @@ void measureSpeeds()
   Rdist = Rdist_now;
 }   
 
-void controlSpeeds()
+void controlSpeeds() //PID
 {
   Lerror = LSetSpeed - LSpeed;
   LeftDerivative = (OldLeftSpeed - LSpeed);
@@ -287,12 +285,12 @@ void controlSpeeds()
 
 }
 
-float SpeedToPWM(float des_speed)
+float SpeedToPWM(float des_speed) //return from desired speed to PWM
 {
   return des_speed*des_speed*des_speed*des_speed*.0025 - 0.1099*des_speed*des_speed*des_speed +1.676*des_speed*des_speed -6.728*des_speed +38.228;
 }
 
-int filterMotorSpeed(float input_speed)
+int filterMotorSpeed(float input_speed) //sign correction for input speed
 {
   if(input_speed > 255)
    return 255;
@@ -302,14 +300,14 @@ int filterMotorSpeed(float input_speed)
   return (int)input_speed;
 }
 
-void sensorRead(){
+void sensorRead(){ //read distance from IR sensor and convert to cm
    if(analogRead(A0)>200){
   sensorDist = -0.088*(analogRead(A0))+64.393;
  }
  else sensorDist = 5;
 }
 
-void speedCorrection(){
+void speedCorrection(){ //wall follower
   sensorRead();
   if(sensorDist<5){
     LSetSpeed = LSetSpeed - 1.25;
@@ -331,11 +329,6 @@ void leftTurn(){
   while(ticksToCM(WLeft.read())-currentLRead >= - 8.95){
     RSetSpeed = 5;
     LSetSpeed = -5;
-//  long currentLRead = WLeft.read();
-//    setStop();
-//  while(WLeft.read()-currentLRead > -LeftTurn){
-//    RSetSpeed = 2;
-//    LSetSpeed = -2;
   }
   setStop();
 }
@@ -345,12 +338,6 @@ void rightTurn(){
   while(ticksToCM(-WRight.read())-currentRRead >= - 8.95){
     RSetSpeed = -10;
     LSetSpeed = 10;
-//  long currentRRead = -WRight.read();
-//    setStop();
-//  while(-WRight.read()-currentRRead > - LeftTurn){
-//    RSetSpeed = -5;
-//    LSetSpeed = 5;
-  }
   setStop();
 }
 void setStop(){
